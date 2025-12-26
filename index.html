@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>TARİHİN DÖNÜM NOKTALARI: BİLİM VE İCATLAR</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deha Atlası: Bilim ve İcatların Dönüm Noktaları</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { 
+            --science-blue: #00509d;  /* Derin Bilim Mavisi */
+            --logic-gray: #334155;    /* Mantık Grisi */
+            --discovery-gold: #ffb703; /* Buluş Altını */
+            --lab-white: #f8fafc;     /* Laboratuvar Beyazı */
+            --electric-cyan: #219ebc;  /* Enerji Turkuazı */
+        }
+        
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--lab-white); }
+        #map { flex: 1; height: 100%; }
+        
+        #info-panel { 
+            width: 450px; padding: 0; background: white; display: flex; 
+            flex-direction: column; box-shadow: -5px 0 15px rgba(0,0,0,0.2); z-index: 1000;
+        }
+        
+        .header { background: var(--science-blue); color: var(--discovery-gold); padding: 20px; text-align: center; border-bottom: 4px solid var(--discovery-gold); }
+        .header h1 { margin: 0; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; }
+        
+        .search-area { padding: 15px; border-bottom: 1px solid #e2e8f0; background: #f1f5f9; }
+        select { 
+            width: 100%; padding: 12px; border-radius: 6px; border: 2px solid var(--science-blue);
+            font-size: 14px; outline: none; background: white; cursor: pointer;
+        }
+
+        #wiki-content { padding: 25px; overflow-y: auto; flex: 1; background: #fff; }
+        #wiki-img { width: 100%; border-radius: 8px; display: none; margin-bottom: 20px; border: 3px solid var(--electric-cyan); }
+        #wiki-title { margin-top: 0; color: var(--science-blue); font-size: 24px; border-bottom: 2px solid var(--discovery-gold); padding-bottom: 10px; }
+        
+        .turning-point-box {
+            background: #eff6ff;
+            border-left: 5px solid var(--discovery-gold);
+            padding: 15px;
+            margin-bottom: 20px;
+            font-style: italic;
+            font-size: 15px;
+            color: #1e3a8a;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+            line-height: 1.6;
+        }
+
+        #wiki-text { line-height: 1.8; color: #334155; font-size: 15px; text-align: justify; }
+        
+        .source-link { 
+            display: inline-block; margin-top: 20px; padding: 10px 20px; 
+            background: var(--science-blue); color: white; text-decoration: none; 
+            border-radius: 6px; font-weight: bold; font-size: 14px; transition: 0.3s;
+        }
+        .source-link:hover { background: var(--electric-cyan); }
+
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            #map { height: 40vh; width: 100%; }
+            #info-panel { width: 100%; height: 60vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="info-panel">
+        <div class="header">
+            <h1>TARİHİN DÖNÜM NOKTALARI: BİLİM VE İCATLAR</h1>
+        </div>
+        <div class="search-area">
+            <select id="discoverySelect">
+                <option value="">Bir Keşif veya İcat Seçin (Kronolojik)</option>
+            </select>
+        </div>
+        <div id="wiki-content">
+            <h2 id="wiki-title">Bilim Tarihi Gezgini</h2>
+            <div id="tp-container"></div>
+            <img id="wiki-img" src="" alt="Bilimsel Keşif">
+            <div id="wiki-text">Dünyayı değiştiren dehaların izini sürmek için haritadaki mavi simgelere tıklayın veya listeden seçim yapın.</div>
+            <a id="wiki-link" href="#" target="_blank" class="source-link" style="display:none;">Araştırmaya Devam Et (Wikipedia)</a>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const discoveries = [
+            { 
+                name: "Mezopotamya - Tekerleğin İcadı (M.Ö. 3500)", 
+                lat: 32.48, lng: 44.43, wiki: "Tekerlek",
+                turningPoint: "Lojistik ve taşımacılık devrimini başlatarak uzak mesafeli ticaretin ve ağır sanayinin kapısını açtı."
+            },
+          
+          { 
+                name: "Uruk - Yazının İcadı (M.Ö. 3200)", 
+                lat: 31.32, lng: 45.63, wiki: "Yazı",
+                turningPoint: "Bilginin zamandan ve mekandan bağımsız olarak aktarılmasını sağlayarak medeniyetin temelini attı."
+            },
+          
+          { 
+    name: "Sardes - Paranın İcadı (M.Ö. 640)", 
+    lat: 38.48, lng: 28.04, wiki: "Para",
+    turningPoint: "Ekonomik değerin standartlaşmasını sağlayarak küresel ticaretin ve ölçülebilir matematiğin önünü açmıştır."
+},
+          { 
+    name: "Milet - Bilimin Doğuşu: Thales (M.Ö. 600)", 
+    lat: 37.53, lng: 27.27, wiki: "Thales",
+    turningPoint: "Doğa olaylarını mitoloji yerine akılcı nedenlerle açıklayan ilk kişi; insanlık tarihinde pozitif bilimin temelini atmıştır."
+},
+             { 
+    name: "İstanköy - Modern Tıbbın Babası (M.Ö. 460)", 
+    lat: 36.89, lng: 27.28, 
+    wiki: "Hipokrat", 
+    turningPoint: "Hastalıkları batıl inançlardan ayırıp gözlem ve deneye dayalı bir bilim haline getirdi; tıp etiğinin temellerini (Hipokrat Yemini) attı." 
+},
+            
+          { 
+                name: "Atina - Bilimsel Sorgulama (M.Ö. 399)", 
+                lat: 37.98, lng: 23.72, wiki: "Sokratik_yöntem",
+                turningPoint: "Bilginin dogmalarla değil, sorgulama ve kanıtla elde edilmesi gerektiğini öğreterek modern bilimsel düşüncenin temelini attı."
+            },
+          { 
+    name: "Atina - Platon'un Akademisi (M.Ö. 387)", 
+    lat: 37.99, lng: 23.70, wiki: "Platon Akademisi",
+    turningPoint: "Bilimsel araştırmanın dünyadaki ilk kurumsal merkezidir; modern üniversitelerin fikirsel atası kabul edilir ancak diploma veren sistemli üniversitelerden (Karaviyyîn gibi) farklı olarak bir düşünce okuludur."
+},
+          { 
+    name: "Atina - Bilimsel Tasnif: Aristoteles (M.Ö. 335)", 
+    lat: 37.97, lng: 23.74, wiki: "Aristoteles",
+    turningPoint: "Mantık ve doğa bilimlerini sistemleştirmiş; canlıları sınıflandırarak bilimsel yöntemi 2000 yıl boyunca şekillendirmiştir."
+},
+          {  
+    name: "İskenderiye - Geometrinin Temelleri: Öklid (M.Ö. 300)",  
+    lat: 31.20, lng: 29.92, wiki: "Öklid",
+    turningPoint: "Aksiyomatik sistem ve mantıksal ispat yöntemini geliştirerek matematiği sarsılmaz bir temel üzerine kurdu; 'Elemanlar' eseri 2000 yıl boyunca ders kitabı olarak okutuldu."
+},
+          
+          {  
+    name: "İskenderiye - Antik Dünyanın Bilgi Bankası (M.Ö. 300)",  
+    lat: 31.20, lng: 29.90, wiki: "İskenderiye_Kütüphanesi",
+    turningPoint: "İnsanlık tarihindeki tüm bilgiyi tek bir yerde toplama amacını taşıyan ilk evrensel kütüphane ve araştırma merkezidir."
+},
+          {  
+    name: "Mezopotamya - Bağdat Pili (M.Ö. 250)",  
+    lat: 34.31, lng: 44.36, wiki: "Bağdat pili",
+    turningPoint: "Modern pillerden 2000 yıl önce, antik Mezopotamya'da elektrik akımı üretebilen bir düzeneğin kullanılmış olması teknoloji tarihini kökten sarsmaktadır."
+},
+            { 
+                name: "İskenderiye - Dünyanın Çevresi (M.Ö. 240)", 
+                lat: 31.20, lng: 29.91, wiki: "Eratosthenes",
+                turningPoint: "Eratosthenes, sadece bir gölge ve geometri kullanarak dünyanın çevresini %1 hata payıyla hesapladı."
+            },
+          {  
+    name: "Siraküza - Modern Mühendisliğin Atası: Arşimet (M.Ö. 212)",  
+    lat: 37.07, lng: 15.28, wiki: "Arşimet",
+    turningPoint: "Suyun kaldırma kuvvetini ve kaldıraç yasalarını keşfetti; 'Bana bir dayanak noktası verin, dünyayı yerinden oynatayım' diyerek mekanik biliminin gücünü tanımladı."
+},
+{  
+    name: "Perge - Konik Kesitlerin Ustası: Apollonius (M.Ö. 200)",  
+    lat: 36.95, lng: 30.85, wiki: "Apollonios (Pergeli matematikçi)",
+    turningPoint: "Elips, parabol ve hiperbol kavramlarını sistemleştirdi. Bu geometrik formlar, asırlar sonra gezegen yörüngelerinin ve modern teleskopların anlaşılmasını sağladı."
+},
+          { 
+    name: "Bergama - Antik Dünyanın Bilgi Rekabeti (M.Ö. 197)", 
+    lat: 39.13, lng: 27.18, 
+    wiki: "Bergama_Kütüphanesi",
+    turningPoint: "200.000 parşömen rulosuyla İskenderiye'ye rakip olmuş; Mısır'ın papirüs ambargosuna karşı parşömen kağıdını geliştirerek kitap sanatında devrim yapmıştır."
+},
+          { 
+    name: "Bergama - Bilginin Kalıcı Hafızası: Parşömen (M.Ö. 190)", 
+    lat: 39.12, lng: 27.0, wiki: "Parşömen",
+    turningPoint: "Papirüs krizine karşı deriyi işleyerek parşömeni icat ettiler; bu sayede kitaplar rulo olmaktan çıkıp ciltlenebilir (kodeks) hale geldi ve kütüphaneler ölümsüzleşti."
+},
+          { 
+    name: "İznik - Usturlabın Teorik Doğuşu (M.Ö. 150)", 
+    lat: 40.42, lng: 29.71, wiki: "Hipparkos",
+    turningPoint: "Küresel gökyüzünü düzleme aktarma (stereografik izdüşüm) tekniğini bularak usturlabın ve modern haritacılığın temelini attı."
+},
+          { 
+                name: "Çin - Kağıdın İcadı (105)", 
+                lat: 34.26, lng: 108.95, wiki: "Cai Lun",
+                turningPoint: "Bilginin hafif, taşınabilir ve ucuz bir materyale kaydedilmesini sağlayarak kütüphanelerin ve eğitimin yayılmasını sağladı."
+            },
+          { name: "Bergama - Modern Tıbbın ve Anatominin Temeli (150)", lat: 39.12, lng: 27.18, wiki: "Galen", turningPoint: "Vücut fonksiyonlarının ve organların işleyişini sistemli bir şekilde inceleyerek 1500 yıl boyunca tıbba yön verdi." },
+          { 
+    name: "İskenderiye - Yer Merkezli Evren Modeli (150)", 
+    lat: 31.19, lng: 30, wiki: "Batlamyus",
+    turningPoint: "Gök cisimlerinin hareketlerini matematiksel bir modele döktü; Kopernik'e kadar 1400 yıl boyunca evren anlayışını şekillendirdi."
+},
+          { 
+    name: "İskenderiye - Usturlap Üzerine İlk İnceleme (350)", 
+    lat: 31.19, lng: 29.89, wiki: "İskenderiyeli_Theon",
+    turningPoint: "Usturlap üzerine bilinen en eski teknik kılavuzu yazarak, bu antik bilginin Orta Çağ'a ve İslam dünyasına aktarılmasını sağlayan köprü oldu."
+},
+     
+          {  
+    name: "Gundişapur - Modern Tıbbın Beşiği (550)",  
+    lat: 32.28, lng: 48.42, wiki: "Cündişapur Akademisi",
+    turningPoint: "Dünyanın ilk sistemli eğitim hastanesidir; Yunan, Hint ve Pers tıp bilgisini birleştirerek tıp fakültesi geleneğini başlatmıştır."
+},
+      
+          {
+  name: "Semerkant - Kağıt Devrimi (8. Yüzyıl)",
+  lat: 39.65, lng: 67,
+  wiki: "Kağıt",
+  turningPoint: "Çin kağıt yapım tekniği Semerkant'ta geliştirilerek pamuk ve keten liflerinden daha dayanıklı ve ucuz kağıt üretildi; kitap çoğaltımı ve bilimsel bilginin yayılması hızlandı."
+},
+
+          { 
+    name: "Bağdat - İlk Metal Usturlap (777)", 
+    lat: 33.34, lng: 44.40, wiki: "İbrahim_el-Fezari",
+    turningPoint: "Antik teorileri pratiğe dökerek İslam dünyasındaki ilk pirinç usturlabı üretti; astronominin bilimsel bir cihazla yapılmasını başlattı."
+},
+          {  
+    name: "Kufe - Kimyanın Bilimsel Temelleri (800)",  
+    lat: 32.03, lng: 44.40, wiki: "Cabir_bin_Hayyan",
+    turningPoint: "Simyayı bilimsel kimyaya dönüştürdü; imbik cihazını keşfederek sülfürik ve nitrik asit gibi temel maddeleri ilk kez sentezledi. Dünyada bilinen ilk kimya laboratuvarını kurmuştur."
+},
+             { 
+                name: "Bağdat - Cebirin Doğuşu (820)", 
+                lat: 33.31, lng: 44.36, wiki: "Harezmi",
+                turningPoint: "Matematikte 'sıfır' kavramını yaygınlaştırdı ve cebiri sistemleştirerek modern algoritma dünyasının temelini attı."
+            },
+          {  
+    name: "Fas - Dünyanın İlk Modern Üniversitesi (859)",  
+    lat: 34.0649, lng: -4.9733, wiki: "Fâtıma el-Fihrî",
+    turningPoint: "Dünyanın sürekli eğitim veren ilk dereceli üniversitesi olan Karaviyyîn'i kurarak, kurumsal yükseköğretimin modelini oluşturdu."
+},
+          { 
+                name: "Kurtuba - İnsanlı İlk Uçuş Denemesi (875)", 
+                lat: 38, lng: -4.77, wiki: "Abbas ibn Firnâs",
+                turningPoint: "Wright Kardeşler'den 1000 yıl önce, kuş tüylerinden yaptığı kanatlarla planör uçuşunu gerçekleştiren ilk insandır."
+            },
+            { 
+                name: "Antik Çin - Barutun İcadı (9. Yüzyıl)", 
+                lat: 30.65, lng: 104.06, wiki: "Barut",
+                turningPoint: "Savaş teknolojisini ve feodal yapıları yıkarak dünya siyasi haritasını kökten değiştirdi."
+            },
+          
+         
+          {  
+    name: "Harran - Modern Astronomi ve Güneş Yılı (900)",  
+    lat: 36.86, lng: 39.03, wiki: "Battani",
+    turningPoint: "Güneş yılını 365 gün, 5 saat, 46 dakika olarak hesapladı; Kopernik gibi dâhiler onun verileriyle evrenin sırlarını çözdü."
+},
+          { 
+    name: "Halep - Hassas Tasarımın Ustası (950)", 
+    lat: 36.20, lng: 37.13, wiki: "Meryem el-İcliyye",
+    turningPoint: "Karmaşık ve yüksek hassasiyetli usturlaplar tasarlayarak astronomik ölçümlerin doğruluğunu artıran öncü kadın mühendistir."
+},
+          { 
+                name: "Kurtuba - Cerrahi Devrim (1000)", 
+                lat: 37.88, lng: -4.80, wiki: "Zehrâvî",
+                turningPoint: "Modern cerrahinin babası Zehravi, 'Et-Tasrif' eserinde bugün hala kullanılan 200'den fazla ameliyat aletini icat etti."
+            },
+            { 
+                name: "Kahire - Optik Devrimi (1011)", 
+                lat: 30.04, lng: 31.23, wiki: "İbn-i_Heysem",
+                turningPoint: "Işığın yansıması ve kırılmasını bilimsel olarak açıklayarak fotoğraf makinesinin atası olan karanlık odayı keşfetti."
+            },
+          { 
+                name: "Gazne - Dünyanın Çapı (1020)", 
+                lat: 33.54, lng: 68.42, wiki: "Biruni",
+                turningPoint: "Trigonometri kullanarak dünyanın çapını ve çevresini sadece %1 hata payıyla hesapladı; jeodezi bilimini kurdu."
+            },
+          { 
+    name: "Hemedan - Tıbbın Kanunu (1025)", 
+    lat: 34.79, lng: 48.51, 
+    wiki: "İbn-i_Sina", 
+    turningPoint: "Modern tıbbın babası kabul edilir; yazdığı 'Tıbbın Kanunu' eseri Avrupa üniversitelerinde 17. yüzyıla kadar temel ders kitabı olarak okutulmuştur." 
+},
+          { 
+    name: "Kurtuba - Evrensel Usturlap (1050)", 
+    lat: 37.88, lng: -4.77, wiki: "Zerkâlî",
+    turningPoint: "Her enlemde çalışabilen 'Safîha'yı (evrensel kadran) icat ederek denizcilerin tüm dünyada yön bulmasını sağlayan navigasyon devrimini başlattı."
+},
+          {  
+    name: "Bağdat - Nizamiye Medreseleri (1067)",  
+    lat: 33.50, lng: 44.40, wiki: "Nizamiye_Medreseleri",
+    turningPoint: "Dünyanın ilk düzenli yükseköğretim sistemi; profesörlük kadroları, öğrenci yurtları ve burslu eğitim modelleriyle modern üniversitelerin prototipidir."
+},
+          { 
+        name: "Henan - Pusulanın İcadı (11. Yüzyıl)", 
+        lat: 34.76, lng: 113.65, wiki: "Pusula",
+        turningPoint: "Denizcilikte yön bulmayı hatasız hale getirerek coğrafi keşiflerin, kıtalararası ticaretin ve küresel dünya haritasının oluşmasını sağlamıştır."
+    },
+      
+          { 
+                name: "Sicilya - Tabula Rogeriana (1154)", 
+                lat: 38.11, lng: 13.36, wiki: "El_İdrisi",
+                turningPoint: "El İdrisi, Orta Çağ'ın en gelişmiş dünya haritasını çizdi; bu harita Kristof Kolomb dahil birçok kaşife asırlarca rehberlik etti."
+            },
+          
+          { 
+                name: "Diyarbakır - Sibernetik ve Robotlar (1206)", 
+                lat: 37.91, lng: 40.23, wiki: "El-Cezeri",
+                turningPoint: "Otomatik makineler ve krank milini icat ederek robotik ve mekanik mühendisliğin temellerini attı."
+            },
+          {  
+    name: "Kahire - Küçük Kan Dolaşımı (1242)",  
+    lat: 30.04, lng: 31.23, wiki: "İbn_Nefis",
+    turningPoint: "Batı dünyasından 300 yıl önce kanın akciğerlerde temizlendiğini (küçük dolaşım) keşfederek tıp tarihini değiştirdi."
+},
+          { 
+                name: "Meraga - Trigonometrik Devrim (1250)", 
+                lat: 37.39, lng: 46.23, wiki: "Nasîrüddin_Tûsî",
+                turningPoint: "Trigonometriyi astronomiden ayırarak bağımsız bir matematik dalı haline getirdi; modern matematiğin en önemli adımlarından biridir. Merâga Gözlemevi'ni kurmuştur."
+            },
+          { 
+    name: "Konya - Karatay Medresesi: Astronomi Okulu (1251)", 
+    lat: 37.87, lng: 32.48, wiki: "Karatay_Medresesi",
+    turningPoint: "Kubbesindeki açıklık ve altındaki havuz sayesinde gökyüzü gözlemi yapılan, astronomi eğitimine odaklanmış ilk modern mimari yapılardan biridir."
+},
+     { 
+    name: "Kırşehir - Cacabey Gökbilim Medresesi (1272)", 
+    lat: 39.14, lng: 34.16, wiki: "Cacabey_Medresesi",
+    turningPoint: "Gökbilim eğitimi için kurulan dünyanın ilk özel kurumlarından biridir; mimarisi, içindeki gözlem kuyusu ile gökyüzünü incelemek üzere tasarlanmış bir rasathane-okuldur."
+},
+          { 
+        name: "Venedik - Gözlüğün İcadı (1286)", 
+        lat: 45.44, lng: 12.31, wiki: "Gözlük",
+        turningPoint: "Bilginlerin ve zanaatkarların görme yetisi azaldığında bile üretmeye devam etmesini sağlayarak insanlığın entelektüel üretim süresini devasa oranda artırmıştır."
+    },
+          { 
+    name: "Kahire - Taşınabilir Astronomi: Rubu Tahtası (13. Yüzyıl)", 
+    lat: 30.20, lng: 31.23, wiki: "Rubu_tahtası",
+    turningPoint: "Usturlabı daha hafif ve taşınabilir hale getiren 'Müceyyeb' (sinüs) kadranını geliştirerek, denizcilerin ve astronomların karmaşık trigonometrik hesapları saniyeler içinde yapmasını sağladılar."
+},
+          { 
+                name: "Mağrip - Sosyolojinin Doğuşu (1377)", 
+                lat: 36.80, lng: 10.18, wiki: "İbn-i_Haldun",
+                turningPoint: "Mukaddime eseriyle toplumların yükseliş ve çöküş yasalarını inceleyen tarih ve toplum bilimini (sosyoloji) kurdu."
+            },
+          { 
+                name: "Semerkant - Ondalık Kesirlerin Kullanımı (1420)", 
+                lat: 39.65, lng: 66.97, wiki: "Gıyaseddin_Cemşid",
+                turningPoint: "Ondalık kesirleri ve virgülü ilk kez sistemli kullanarak yüksek hassasiyetli matematiksel hesaplamaların önünü açtı."
+            },
+          { 
+                name: "Semerkant - Gökbilim Cetvelleri (1424)", 
+                lat: 39.67, lng: 66.95, wiki: "Uluğ_Bey",
+                turningPoint: "Döneminin en gelişmiş gözlemevinde hazırlanan Zic-i Sultani, teleskop öncesi dönemin en hassas yıldız kataloğudur."
+            },
+     
+            { 
+                name: "Mainz - Modern Matbaa (1450)", 
+                lat: 49.99, lng: 8.24, wiki: "Johannes_Gutenberg",
+                turningPoint: "Kitaplar lüks olmaktan çıktı; okuryazarlık arttı ve Rönesans ile Reform hareketleri tüm Avrupa'ya yayıldı."
+            },
+          {  
+    name: "İstanbul - Mikrobiyolojinin Öncüsü (1453)",  
+    lat: 41.0082, lng: 28.9784, wiki: "Akşemseddin",
+    turningPoint: "Antony van Leeuwenhoek'tan iki asır önce, hastalıkların gözle görülmeyen 'tohumlar' (mikroplar) yoluyla bulaştığını keşfederek mikrobiyolojinin temelini atmıştır."
+},
+                 { 
+    name: "Amasya - Cerrahi Minyatürlerin Doğuşu (1465)", 
+    lat: 40.65, lng: 35.83, 
+    wiki: "Sabuncuoğlu_Şerefeddin", 
+    turningPoint: "Zehrâvî'nin cerrahi mirasını devralarak, dünyada ameliyat tekniklerini minyatürlerle (insan figürleriyle) görselleştiren ilk hekim olmuştur." 
+},
+          { 
+                name: "Milano - Helikopterin Atası (1485)", 
+                lat: 45.4642, lng: 9.1900, wiki: "Leonardo_da_Vinci",
+                turningPoint: "Uçan vida tasarımıyla dikey kalkış fikrini (modern helikopter) teorize eden ilk çizimleri yaptı."
+            },
+
+          { 
+                name: "İstanbul - Gözlemevi ve Hassas Ölçüm (1577)", 
+                lat: 41.04, lng: 28.99, wiki: "Takiyüddin",
+                turningPoint: "Teleskop öncesi dönemin en hassas astronomik saatlerini ve gözlem araçlarını icat ederek gökyüzünü santimetre hassasiyetinde ölçtü."
+            },
+            { 
+                name: "Floransa - Modern Astronomi (1609)", 
+                lat: 43.76, lng: 11.25, wiki: "Galileo_Galilei",
+                turningPoint: "Teleskopla Jüpiter'in uydularını keşfeden Galileo, evrenin merkezinde dünyanın olmadığını kanıtladı."
+            },
+          { 
+                name: "İstanbul - İlk Kıtalararası Uçuş (1632)", 
+                lat: 41.0256, lng: 28.9741, wiki: "Hezarfen_Ahmed_Çelebi",
+                turningPoint: "Galata Kulesi'nden Üsküdar'a kanat takarak uçarak, aerodinamiğin pratik uygulamalarında devrim yaptı."
+            },
+          { 
+                name: "İstanbul - İlk Roketli Uçuş (1633)", 
+                lat: 41.0175, lng: 28.9850, wiki: "Lagari_Hasan_Çelebi",
+                turningPoint: "Barut macunuyla çalışan yedi kollu bir roketle dikey kalkış yaparak havacılık tarihinde roket teknolojisinin ilk örneğini sundu."
+            },
+          { name: "Londra - Hücre Teorisi (1665)", lat: 51.50, lng: -0.11, wiki: "Robert_Hooke", turningPoint: "Mikroskop altında mantar dokusunu inceleyerek yaşamın temel birimi olan 'hücre'yi keşfetti." },
+            { 
+                name: "Cambridge - Kütleçekim Yasası (1687)", 
+                lat: 52.20, lng: 0.12, wiki: "Isaac_Newton",
+                turningPoint: "Evrenin matematiksel kurallarla yönetildiği anlaşıldı; modern fizik ve mühendisliğin kapıları açıldı."
+            },
+            { 
+                name: "Londra - Buhar Makinesi (1769)", 
+                lat: 51.50, lng: -0.12, wiki: "James_Watt",
+                turningPoint: "Kas gücünün yerini makine gücü aldı; Sanayi Devrimi ile insanlık üretim kapasitesini binlerce kat artırdı."
+            },
+          { 
+                name: "Berkeley - Bağışıklık Bilimi (1796)", 
+                lat: 51.69, lng: -2.45, wiki: "Edward Jenner",
+                turningPoint: "Edward Jenner'ın çiçek aşısı, koruyucu tıbbı başlatarak kitlesel ölümleri tarihte ilk kez engelledi."
+            },
+          { name: "Como - Voltik Pil (1800)", lat: 45.81, lng: 9.08, wiki: "Alessandro_Volta", turningPoint: "Kimyasal enerjiyi elektrik enerjisine dönüştürerek ilk kez sürekli elektrik akımı elde edilmesini sağladı." },
+          { 
+        name: "İngiltere - Buharlı Lokomotif (1804)", 
+        lat: 51.75, lng: -3.37, wiki: "Demiryolu_ulaşımı",
+        turningPoint: "Kara taşımacılığında hız ve kapasite devrimi yaparak sanayi ürünlerinin dünyaya yayılmasını sağlamış ve mesafeleri 'öldürmüştür'."
+    },
+            { 
+    name: "Mannheim - İlk Bisiklet (1817)", 
+    lat: 49.4875, lng: 8.4660, 
+    wiki: "Bisiklet", 
+    turningPoint: "Baron Karl von Drais, yönlendirilebilir ilk iki tekerlekli aracı icat ederek modern bisikletin ve bireysel ulaşımın temelini attı." 
+},
+          { 
+        name: "Döbereiner - İlk Çakmak (1823)", 
+        lat: 50.92, lng: 11.58, wiki: "Çakmak",
+        turningPoint: "Ateşi bir kutu içinde taşınabilir ve anında üretilebilir hale getirerek, insanın dış mekanlarda ve zor şartlarda hayatta kalma becerisini artırdı."
+    },
+          { 
+        name: "Stockton - Kibrit (1826)", 
+        lat: 54.57, lng: -1.31, wiki: "Kibrit",
+        turningPoint: "Kimyasal enerjiyi basit bir sürtünmeyle ateşe dönüştürerek ısınma ve aydınlanmayı sağladı."
+    },
+          { 
+                name: "Londra - İlk Bilgisayar Programı (1843)", 
+                lat: 51.50, lng: -0.13, wiki: "Ada_Lovelace",
+                turningPoint: "Bir makinenin sadece hesap yapmayacağını, karmaşık işlemleri (müzik, grafik) yürütebileceğini öngören ilk algoritmayı yazdı."
+            },
+            { 
+                name: "Viyana - Antiseptik Devrimi (1847)", 
+                lat: 48.20, lng: 16.37, wiki: "Ignaz_Semmelweis",
+                turningPoint: "El yıkamanın önemini keşfederek tıpta enfeksiyon kontrolünü başlattı ve milyonlarca hayat kurtardı."
+            },
+
+          { name: "Edinburgh - Işığın Doğası (1865)", lat: 55.95, lng: -3.18, wiki: "James_Clerk_Maxwell", turningPoint: "Elektrik ve manyetizmayı tek bir denklemde birleştirerek radyo dalgalarının, televizyonun ve radarın temelini attı." },
+            { 
+                name: "Brünn - Kalıtım Yasaları (1865)", 
+                lat: 49.19, lng: 16.60, wiki: "Gregor_Mendel",
+                turningPoint: "Bezelye deneyleriyle genetiğin temel yasalarını keşfetti; biyolojinin matematiksel bir bilim olmasını sağladı."
+            },
+          { name: "St. Petersburg - Kimyasal Elementler (1869)", lat: 59.93, lng: 30.33, wiki: "Dmitri_Mendeleyev", turningPoint: "Elementleri atom ağırlıklarına göre dizerek, henüz keşfedilmemiş maddelerin varlığını ve özelliklerini önceden tahmin etti." },
+            { 
+                name: "Menlo Park - Elektrik Ampulü (1879)", 
+                lat: 40.54, lng: -74.36, wiki: "Thomas_Edison",
+                turningPoint: "Gecenin aydınlatılmasıyla sosyal hayat ve sanayi üretimi 24 saate yayıldı."
+            },
+          { 
+        name: "Wolverhampton - Elektrikli Araba (1884)", 
+        lat: 52.58, lng: -2.12, wiki: "Elektrikli_otomobil",
+        turningPoint: "Thomas Parker tarafından üretilen ilk pratik elektrikli araç, fosil yakıtlar hakim olmadan çok önce temiz ve sessiz ulaşımın mümkün olduğunu kanıtlamıştır."
+    },
+      { 
+    name: "Stuttgart - İlk Motosiklet (1885)", 
+    lat: 48.80, lng: 9.21, 
+    wiki: "Motosiklet", 
+    turningPoint: "Gottlieb Daimler, geliştirdiği hafif ve hızlı motoru bir bisiklet şasine monte ederek modern motorlu ulaşımın ve motosikletin temelini attı." 
+},
+          { 
+                name: "Mannheim - Modern Otomobil (1886)", 
+                lat: 49.48, lng: 8.46, wiki: "Karl_Benz",
+                turningPoint: "İçten yanmalı motorun ulaşımda kullanılmasıyla bireysel hareketlilik devrimi başladı."
+            },
+            { 
+                name: "New York - Alternatif Akım (1887)", 
+                lat: 40.71, lng: -74.00, wiki: "Nikola_Tesla",
+                turningPoint: "AC akım sistemi sayesinde elektriğin binlerce kilometre taşınmasını sağlayarak modern şehirlerin kurulmasına imkan verdi."
+            },
+          
+            { 
+                name: "Paris - Radyoaktivite (1898)", 
+                lat: 48.85, lng: 2.35, wiki: "Marie_Curie",
+                turningPoint: "Atomun yapısı ve enerji potansiyeli anlaşıldı; modern tıp (X-Ray, Kanser tedavisi) ve nükleer fizik doğdu."
+            },
+            { 
+                name: "Viyana - Psikanaliz (1899)", 
+                lat: 48.20, lng: 16.37, wiki: "Sigmund_Freud",
+                turningPoint: "İnsanın rasyonel bir varlık olmadığı, bilinçaltının davranışlar üzerindeki gücü keşfedildi."
+            },
+          { name: "Berlin - Enerji Kuantumu (1900)", lat: 52.52, lng: 13.40, wiki: "Max_Planck", turningPoint: "Klasik fiziğin tıkandığı noktada atomik seviyeyi açıklayan kuantum kuramını başlatarak modern elektroniğin babası oldu." },
+            { 
+                name: "Kitty Hawk - İlk Uçuş (1903)", 
+                lat: 36.06, lng: -75.67, wiki: "Wright_Kardeşler",
+                turningPoint: "Mesafe kavramı değişti; dünya küresel bir köye dönüşmeye başladı."
+            },
+          { 
+    name: "Çanakkale - Sahra Röntgen Ünitesi (1915)", 
+    lat: 40.14, lng: 26.40, wiki: "X ışını",
+    turningPoint: "Dünya savaş tarihinde ilk kez, cephe hattının hemen arkasında kurulan seyyar röntgen istasyonlarıyla mermi çekirdeklerinin yeri tespit edilerek binlerce askerin hayatı kurtarılmıştır."
+},
+            { 
+                name: "Berlin - Görelilik Teorisi (1915)", 
+                lat: 52.52, lng: 13.40, wiki: "Albert_Einstein",
+                turningPoint: "Zaman ve uzayın mutlak olmadığı anlaşıldı; GPS teknolojisinden uzay yolculuğuna kadar temel oluşturdu."
+            },
+          { 
+                name: "Kopenhag - Kuantum Mekaniği (1925)", 
+                lat: 55.67, lng: 12.56, wiki: "Kuantum_mekaniği",
+                turningPoint: "Atom altı dünyayı keşfetti; modern işlemciler, lazerler ve tüm dijital elektronik bu kurallar üzerine kuruldu."
+            },
+            { 
+                name: "Londra - Penisilin (1928)", 
+                lat: 51.51, lng: -0.17, wiki: "Alexander_Fleming",
+                turningPoint: "Enfeksiyonlar artık ölümcül olmaktan çıktı; ortalama insan ömrü bu keşifle yaklaşık 20-30 yıl uzadı."
+            },
+          {  
+    name: "California - Evrenin Genişlemesi (1929)",  
+    lat: 34.22, lng: -118.06, wiki: "Edwin_Hubble",
+    turningPoint: "Galaksilerin birbirinden uzaklaştığını kanıtlayarak durağan evren modelini yıktı ve Büyük Patlama teorisinin kapısını açtı."
+},
+          { 
+                name: "Londra - İlk Jet Motoru Tasarımı (1930)", 
+                lat: 51.50, lng: -0.12, wiki: "Frank_Whittle",
+                turningPoint: "Pistonlu motorların hız sınırını aşarak sesten hızlı uçuşların ve modern havayolu taşımacılığının yolunu açtı."
+            },
+          { 
+                name: "Berkeley - Plütonyum ve Transuranyum (1940)", 
+                lat: 37.87, lng: -122.27, wiki: "Glenn_T._Seaborg",
+                turningPoint: "Periyodik tabloya yeni elementler ekleyerek nükleer kimyanın sınırlarını genişletti."
+            },
+       {
+  name: "Chicago - İlk Kontrollü Nükleer Reaktör (1942)",
+  lat: 41.79, lng: -87.60,
+  wiki: "Chicago_Pile-1",
+  turningPoint: "Enrico Fermi ve ekibi, Chicago Pile-1 ile tarihteki ilk kontrollü ve kendi kendini sürdüren nükleer zincirleme reaksiyonu gerçekleştirerek nükleer çağın kapısını açtı."
+},
+
+          { 
+                name: "Los Alamos - Nükleer Çağ (1945)", 
+                lat: 35.87, lng: -106.30, wiki: "Manhattan_Projesi",
+                turningPoint: "Atomun içindeki devasa enerji serbest bırakıldı; hem yıkım gücü hem de nükleer enerji dönemi başladı."
+            },
+            { 
+                name: "Manchester - Bilgisayarın Mantığı (1948)", 
+                lat: 53.48, lng: -2.24, wiki: "Alan_Turing",
+                turningPoint: "Yapay zeka ve modern bilgisayar mimarisinin teorik temellerini atarak dijital çağın kapılarını araladı."
+            },
+            { 
+                name: "Cambridge - DNA Yapısı (1953)", 
+                lat: 52.20, lng: 0.11, wiki: "James Watson",
+                turningPoint: "Yaşamın 'yazılım kodu' çözüldü; genetik mühendisliği ve biyoteknoloji çağı başladı."
+            },
+          { name: "Baykonur - Sputnik 1 (1957)", lat: 45.96, lng: 63.30, wiki: "Sputnik_1", turningPoint: "İnsan yapımı bir nesnenin ilk kez dünya yörüngesine oturmasıyla uzay yarışı ve küresel uydu iletişimi başladı." },
+            { 
+                name: "Silikon Vadisi - Mikroçip (1958)", 
+                lat: 37.38, lng: -122.08, wiki: "Entegre_devre",
+                turningPoint: "Bilgisayarların küçülüp evlerimize ve ceplerimize girmesini sağlayan donanım devrimi."
+            },
+          { 
+                name: "St. Louis - Dokunmatik Ekran (1965)", 
+                lat: 38.62, lng: -90.19, wiki: "Dokunmatik_ekran",
+                turningPoint: "E.A. Johnson tarafından icat edilen bu teknoloji, insan ve makine arasındaki fiziksel engelleri ortadan kaldırdı."
+            },
+            { 
+                name: "Belfast - Pulsarların Keşfi (1967)", 
+                lat: 54.60, lng: -5.93, wiki: "Jocelyn_Bell_Burnell",
+                turningPoint: "Yıldızların ölümü ve aşırı yoğun maddelerin varlığı kanıtlandı; astrofizikte yeni bir dönem açıldı."
+            },
+            { 
+                name: "Houston - Ay'a İniş (1969)", 
+                lat: 29.55, lng: -95.09, wiki: "Apollo_11",
+                turningPoint: "İnsanoğlunun ilk kez başka bir gökcismine ayak basmasıyla evrensel keşiflerin sınırları dünya dışına taşındı."
+            },
+          { 
+        name: "Kaliforniya - İnternetin Temeli (1969)", 
+        lat: 34.06, lng: -118.44, wiki: "ARPANET",
+        turningPoint: "Bilgisayarların birbiriyle veri alışverişi yapmasını sağlayarak bilginin demokratikleştiği ve sınırların kalktığı dijital çağın altyapısını kurmuştur."
+    },
+            { 
+                name: "Palo Alto - Grafik Arayüz ve Fare (1973)", 
+                lat: 37.44, lng: -122.14, wiki: "Xerox Alto",
+                turningPoint: "Bilgisayarların pencereler ve fare ile kullanılmasını sağlayarak kişisel bilgisayar devrimini tetikledi."
+            },
+          { 
+        name: "Aberdeen - MRI Teknolojisi (1973)", 
+        lat: 57.14, lng: -2.09, wiki: "Manyetik_rezonans_görüntüleme",
+        turningPoint: "Vücuda radyasyon vermeden ve operasyon yapmadan iç organları görüntüleyerek tıp tarihinde teşhis koyma yöntemlerini kökten değiştirmiştir."
+    },
+          { 
+                name: "Nagoya - Lityum-İyon Batarya (1985)", 
+                lat: 35.18, lng: 136.90, wiki: "Akira_Yoshino",
+                turningPoint: "Taşınabilir enerji devrimini başlatarak akıllı telefonlardan elektrikli araçlara kadar modern mobil dünyayı mümkün kıldı."
+            },
+            { 
+                name: "CERN - World Wide Web (1989)", 
+                lat: 46.23, lng: 6.05, wiki: "World_Wide_Web",
+                turningPoint: "İnternetin kitleselleşmesini sağlayan protokol burada yazıldı; bilgi çağı ve dijital ekonomi doğdu."
+            },
+          { 
+                name: "Düsseldorf - Cep Telefonu Devrimi (1992)", 
+                lat: 51.22, lng: 6.77, wiki: "SMS",
+                turningPoint: "İlk kısa mesajın (SMS) gönderilmesiyle mobil haberleşme sadece sesli olmaktan çıkıp yazılı bir dijital kültüre dönüştü."
+            },
+          { 
+                name: "Roslin - Genetik Klonlama (1996)", 
+                lat: 55.85, lng: -3.16, wiki: "Dolly_(koyun)",
+                turningPoint: "Yetişkin bir hücreden klonlanan ilk memeli ile genetik mühendisliği ve kök hücre araştırmalarında yeni bir ufuk açıldı."
+            },
+          { 
+                name: "Ankara - 5G'nin Temeli (2008)", 
+                lat: 39.86, lng: 32.74, wiki: "Erdal_Arıkan",
+                turningPoint: "Prof. Dr. Erdal Arıkan tarafından geliştirilen 'Kutupsal Kodlar', 5G teknolojisinin dünya standardı ve veri hızının temeli oldu."
+            },
+          { 
+                name: "San Francisco - Üretken Yapay Zeka (2022)", 
+                lat: 37.77, lng: -122.41, wiki: "Yapay_zekâ",
+                turningPoint: "ChatGPT ve benzeri modellerle, makinelerin sadece hesaplama değil, yaratıcı içerik üretme dönemi başladı."
+            }
+        ];
+
+      
+      
+        // Harita ve Marker işlemleri
+        const map = L.map('map').setView([32, 35], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+            attribution: '&copy; OpenStreetMap' 
+        }).addTo(map);
+
+        const select = document.getElementById('discoverySelect');
+        const wikiTitle = document.getElementById('wiki-title');
+        const wikiText = document.getElementById('wiki-text');
+        const wikiImg = document.getElementById('wiki-img');
+        const wikiLink = document.getElementById('wiki-link');
+        const tpContainer = document.getElementById('tp-container');
+        const markerList = [];
+
+        const scienceIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+        });
+
+        const activeIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+        });
+
+        async function fetchWikiData(pageTitle, tpText) {
+            wikiText.innerHTML = "Veriler laboratuvardan getiriliyor...";
+            wikiImg.style.display = "none";
+            wikiLink.style.display = "none";
+            tpContainer.innerHTML = `<div class="turning-point-box"><strong>Dönüm Noktası:</strong> ${tpText}</div>`;
+            
+            try {
+                let response = await fetch(`https://tr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`);
+                let data = await response.json();
+
+                wikiTitle.innerText = data.title;
+                wikiText.innerText = data.extract || "Bilgi bulunamadı.";
+                if (data.thumbnail) { 
+                    wikiImg.src = data.thumbnail.source; 
+                    wikiImg.style.display = "block"; 
+                }
+                wikiLink.href = data.content_urls.desktop.page;
+                wikiLink.style.display = "inline-block";
+            } catch (e) {
+                wikiText.innerText = "Bağlantı hatası oluştu.";
+            }
+        }
+
+        discoveries.forEach((d, i) => {
+            const marker = L.marker([d.lat, d.lng], { icon: scienceIcon }).addTo(map);
+            marker.bindTooltip(`<b>${d.name}</b>`);
+            marker.on('click', () => updateView(d, i));
+            markerList.push(marker);
+
+            const opt = document.createElement('option');
+            opt.value = i; opt.textContent = d.name;
+            select.appendChild(opt);
+        });
+
+        function updateView(d, index) {
+            markerList.forEach(m => m.setIcon(scienceIcon));
+            markerList[index].setIcon(activeIcon);
+            select.value = index;
+            map.flyTo([d.lat, d.lng], 6);
+            fetchWikiData(d.wiki, d.turningPoint);
+        }
+
+        select.addEventListener('change', (e) => {
+            if(e.target.value !== "") updateView(discoveries[e.target.value], e.target.value);
+        });
+      
+      
+    </script>
+</body>
+</html>
+    
+  </body>
+  
+</html>
